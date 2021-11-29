@@ -13,27 +13,27 @@ import { tokenize } from "protobufjs";
 
 type ProvideSymbolsResult = ProviderResult<SymbolInformation[] | DocumentSymbol[]>;
 
-const cache = {}
+const cache = {};
 
 export class Proto3DocumentSymbolProvider implements DocumentSymbolProvider {
   provideDocumentSymbols(doc: TextDocument, token: CancellationToken): ProvideSymbolsResult {
     const ret: SymbolInformation[] = [];
 
     // Retrieve tokens if previously cached
-    if (cache[doc.uri+'__'+doc.version]) {
-      return cache[doc.uri+'__'+doc.version]
+    if (cache[doc.uri + "__" + doc.version]) {
+      return cache[doc.uri + "__" + doc.version];
     }
 
     // remove preceding cache entry
-    if (cache[doc.uri+'__'+(doc.version - 1)]) {
-      delete cache[doc.uri+'__'+(doc.version - 1)]
+    if (cache[doc.uri + "__" + (doc.version - 1)]) {
+      delete cache[doc.uri + "__" + (doc.version - 1)];
     }
 
     // create cache entry
     const tokenizer = tokenize(doc.getText(), false);
-    let state: "free" | "rpc" | "message" | 'service' = "free"
-    for (let tok = tokenizer.next(); tok !== null; tok = tokenizer.next()) {
-      switch (tok) {
+    let state: "free" | "rpc" | "message" | "service" = "free";
+    for (let token = tokenizer.next(); token !== null; token = tokenizer.next()) {
+      switch (token) {
         case "message":
           state = "message";
           break;
@@ -42,8 +42,8 @@ export class Proto3DocumentSymbolProvider implements DocumentSymbolProvider {
           state = "rpc";
           break;
 
-        case 'service':
-          state = 'service';
+        case "service":
+          state = "service";
           break;
 
         default:
@@ -51,7 +51,7 @@ export class Proto3DocumentSymbolProvider implements DocumentSymbolProvider {
             continue;
           }
 
-          if (!/^[a-zA-Z_]+\w*/.test(tok)) {
+          if (!/^[a-zA-Z_]+\w*/.test(token)) {
             // identifier expected but found other token
             state = "free";
             continue;
@@ -60,23 +60,23 @@ export class Proto3DocumentSymbolProvider implements DocumentSymbolProvider {
           const location = new Location(doc.uri, new Position(tokenizer.line - 1, 0));
           let kind = SymbolKind.Struct;
           switch (state) {
-            case 'message':
+            case "message":
               kind = SymbolKind.Struct;
               break;
-            case 'rpc':
+            case "rpc":
               kind = SymbolKind.Method;
-              break
-            case 'service':
+              break;
+            case "service":
               kind = SymbolKind.Class;
               break;
           }
-          ret.push(new SymbolInformation(tok, kind, "", location));
+          ret.push(new SymbolInformation(token, kind, "", location));
           state = "free";
           break;
       }
     }
 
-    cache[doc.uri+'__'+doc.version] = ret
+    cache[doc.uri + "__" + doc.version] = ret;
 
     return ret;
   }
